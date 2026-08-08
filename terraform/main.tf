@@ -1,3 +1,12 @@
+terraform {
+  required_version = ">= 1.0.0"
+  backend "s3" {
+    bucket         = "fabius-lihanda-s3-bucket"
+    key            = "java-app/state.tfstate"
+    region         = "eu-north-1" # region should be the same across so multiple developers can work on the same state file
+  }
+}
+
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.cluster.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
