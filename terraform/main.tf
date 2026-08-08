@@ -1,3 +1,30 @@
+provider "kubernetes" {
+  host                   = data.aws_eks_cluster.cluster.endpoint
+  cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+  token                  = data.aws_eks_cluster_auth.cluster.token
+}
+
+provider "helm" {
+  kubernetes = {
+    host                   = data.aws_eks_cluster.cluster.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
+    token                  = data.aws_eks_cluster_auth.cluster.token
+  }
+} 
+
+
+data "aws_eks_cluster" "cluster" {
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+
+
 module "vpc" {
   source = "./modules/vpc"
 
@@ -18,4 +45,35 @@ module "eks" {
   application_name = var.application_name
   instance_types   = var.instance_types
   ami_type         = var.ami_type
+
+  ebs_csi_role_arn = module.ebs_csi_pod_identity.iam_role_arn
+}
+
+
+module "mysql" {
+  source = "./modules/mysql"
+
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+
+  depends_on = [module.eks]
+}
+
+module "ebs_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 2.5"
+
+  name = "ebs-csi"
+
+  attach_aws_ebs_csi_policy = true
+
+  associations = {
+    ebs = {
+      cluster_name    = module.eks.cluster_name
+      namespace       = "kube-system"
+      service_account = "ebs-csi-controller-sa"
+    }
+  }
 }
