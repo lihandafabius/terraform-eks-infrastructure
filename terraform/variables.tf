@@ -30,6 +30,3 @@ variable "ami_type" {
   default = "AL2023_x86_64_STANDARD"
 }
 
-variable "ebs_csi_role_arn" {
-  type = string
-}

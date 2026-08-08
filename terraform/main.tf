@@ -40,15 +40,22 @@ module "eks" {
 
   vpc_id             = module.vpc.vpc_id
   private_subnet_ids = module.vpc.private_subnets
+  ebs_csi_role_arn   = module.ebs_csi_pod_identity.iam_role_arn
 
   environment      = var.environment
   application_name = var.application_name
   instance_types   = var.instance_types
   ami_type         = var.ami_type
-
-  ebs_csi_role_arn = module.ebs_csi_pod_identity.iam_role_arn
 }
 
+module "ebs_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 2.5"
+
+  name = "${var.environment}-ebs-csi"
+
+  attach_aws_ebs_csi_policy = true
+}
 
 module "mysql" {
   source = "./modules/mysql"
@@ -61,19 +68,3 @@ module "mysql" {
   depends_on = [module.eks]
 }
 
-module "ebs_csi_pod_identity" {
-  source  = "terraform-aws-modules/eks-pod-identity/aws"
-  version = "~> 2.5"
-
-  name = "ebs-csi"
-
-  attach_aws_ebs_csi_policy = true
-
-  associations = {
-    ebs = {
-      cluster_name    = module.eks.cluster_name
-      namespace       = "kube-system"
-      service_account = "ebs-csi-controller-sa"
-    }
-  }
-}

@@ -22,8 +22,15 @@ module "eks" {
       before_compute = true
     }
     aws-ebs-csi-driver = {
-      service_account_role_arn = var.ebs_csi_role_arn
+      before_compute = true
+      pod_identity_association = [
+        {
+          role_arn        = var.ebs_csi_role_arn
+          service_account = "ebs-csi-controller-sa"
+        }
+      ]
     }
+
   }
 
   # EKS Managed Node Group(s)
