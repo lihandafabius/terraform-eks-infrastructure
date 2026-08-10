@@ -1,0 +1,69 @@
+#!/usr/bin/env groovy
+
+pipeline {
+    agent any
+
+    environment {
+        AWS_DEFAULT_REGION = 'eu-north-1'
+        TF_IN_AUTOMATION = 'true'
+    }
+
+    stages {
+
+        stage('Checkout') {
+            steps {
+                checkout scm
+            }
+        }
+
+        stage('Terraform init') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform init'
+                }
+            }
+        }
+
+        stage('Terraform format check') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform fmt -check'
+                }
+            }
+        }
+
+        stage('Terraform validate') {
+            steps {
+                dir('terraform') {
+                    sh 'terraform validate'
+                }
+            }
+        }
+
+        stage('Terraform plan') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
+            steps {
+                dir('terraform') {
+                    sh 'terraform plan -out=tfplan'
+                    sh 'terraform show tfplan'
+                }
+            }
+        }
+
+        stage('Terraform apply') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
+            steps {
+                input message: 'Review the Terraform plan in the build logs. Apply these changes?'
+                dir('terraform') {
+                    sh 'terraform apply -auto-approve tfplan'
+                }
+            }
+        }
+    }
+}
