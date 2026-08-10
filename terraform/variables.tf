@@ -25,7 +25,7 @@ variable "application_name" {
 
 variable "instance_types" {
   type    = list(string)
-  default = ["t3.micro"]
+  default = ["t3.small"]
 }
 
 variable "ami_type" {
