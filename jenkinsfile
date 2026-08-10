@@ -4,8 +4,9 @@ pipeline {
     agent any
 
     environment {
-        AWS_DEFAULT_REGION = 'eu-north-1'
-        TF_IN_AUTOMATION = 'true'
+        AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+        AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+        AWS_DEFAULT_REGION    = 'eu-north-1'
     }
 
     stages {
@@ -41,10 +42,6 @@ pipeline {
         }
 
         stage('Terraform plan') {
-            environment {
-                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
-                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
-            }
             steps {
                 dir('terraform') {
                     sh 'terraform plan -out=tfplan'
@@ -54,10 +51,6 @@ pipeline {
         }
 
         stage('Terraform apply') {
-            environment {
-                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
-                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
-            }
             steps {
                 input message: 'Review the Terraform plan in the build logs. Apply these changes?'
                 dir('terraform') {
