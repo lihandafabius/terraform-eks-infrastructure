@@ -15,7 +15,7 @@ variable "environment" {
 variable "instance_types" {
   description = "List of instance types for the EKS managed node group."
   type        = list(string)
-  default     = ["t3.micro"]
+  default     = ["t3.small"]
 }
 
 variable "ami_type" {
