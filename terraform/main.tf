@@ -1,10 +1,10 @@
 terraform {
   required_version = ">= 1.0.0"
   backend "s3" {
-    bucket         = "fabius-lihanda-s3-bucket"
-    key            = "java-app/state.tfstate"
-    region         = "eu-north-1" # region should be the same across so multiple developers can work on the same state file
-    use_lockfile     = true # state to prevent concurrent modifications
+    bucket       = "fabius-lihanda-s3-bucket"
+    key          = "java-app/state.tfstate"
+    region       = "eu-north-1" # region should be the same across so multiple developers can work on the same state file
+    use_lockfile = true         # state to prevent concurrent modifications
   }
 }
 
@@ -20,7 +20,7 @@ provider "helm" {
     cluster_ca_certificate = base64decode(data.aws_eks_cluster.cluster.certificate_authority[0].data)
     token                  = data.aws_eks_cluster_auth.cluster.token
   }
-} 
+}
 
 
 data "aws_eks_cluster" "cluster" {

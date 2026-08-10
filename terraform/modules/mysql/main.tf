@@ -1,7 +1,7 @@
 resource "helm_release" "mysql" {
-  name             = "mysql"
-  repository       = "oci://registry-1.docker.io/bitnamicharts"
-  chart            = "mysql"
+  name       = "mysql"
+  repository = "oci://registry-1.docker.io/bitnamicharts"
+  chart      = "mysql"
 
 
   values = [

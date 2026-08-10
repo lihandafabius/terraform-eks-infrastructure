@@ -18,13 +18,13 @@ variable "instance_types" {
   default     = ["t3.micro"]
 }
 
- variable "ami_type" {
+variable "ami_type" {
   description = "The AMI type for the EKS managed node group."
   type        = string
   default     = "AL2023_x86_64_STANDARD"
 }
- 
- variable application_name {
+
+variable "application_name" {
   description = "The name of the application for tagging purposes."
   type        = string
   default     = "java-app"
