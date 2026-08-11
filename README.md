@@ -44,3 +44,37 @@ Throughout this project, the following technologies and concepts are implemented
 * Validating and reviewing infrastructure changes before deployment
 * Applying Infrastructure as Code best practices for reproducibility and automation
 
+
+## Project structure
+
+The Terraform project is organized into reusable modules, separating networking, Kubernetes infrastructure, and application storage components. This modular structure makes the infrastructure easier to maintain, extend, and reuse across multiple environments.
+
+```text
+.
+├── jenkinsfile
+├── LICENSE
+├── README.md
+└── terraform
+    ├── main.tf
+    ├── providers.tf
+    ├── variables.tf
+    ├── outputs.tf
+    └── modules
+        ├── vpc
+        │   ├── main.tf
+        │   ├── output.tf
+        │   └── variables.tf
+        ├── eks
+        │   ├── main.tf
+        │   ├── outputs.tf
+        │   └── variables.tf
+        └── mysql
+            ├── main.tf
+            ├── providers.tf
+            ├── outputs.tf
+            └── values.yaml
+```
+
+The root Terraform configuration orchestrates the entire infrastructure by invoking the VPC, EKS, and MySQL modules. Each module is responsible for a specific part of the infrastructure, allowing changes to be made independently while keeping the overall deployment consistent and reusable.
+
+
