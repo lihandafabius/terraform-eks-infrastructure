@@ -1,6 +1,6 @@
-<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="36" alt="Terraform logo"/>
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="36" alt="Terraform logo"/> # Terraform on AWS – Provisioning Amazon EKS Infrastructure with Remote State and CI/CD
 
-# Terraform on AWS – Provisioning Amazon EKS Infrastructure with Remote State and CI/CD
+
 
 
 ---
