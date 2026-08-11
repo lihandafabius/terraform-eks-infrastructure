@@ -11,7 +11,7 @@
 </table>
 
 ---
-This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. In the previous project, the EKS cluster and its supporting infrastructure were provisioned using **eksctl**, while the VPC was created using an AWS **CloudFormation VPC template**. This project builds on that environment by moving the infrastructure provisioning into Terraform.
+This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. In the [previous project](https://github.com/lihandafabius/Devops_Nana-Techworld_Bootcamp/blob/main/kubernetes-on-AWS-exercises/README.md), the EKS cluster and its supporting infrastructure were provisioned using **eksctl**, while the VPC was created using an AWS **CloudFormation VPC template**. This project builds on that environment by moving the infrastructure provisioning into Terraform.
 
 Using Terraform provides a more consistent and reusable way to manage the entire infrastructure from a single IaC tool. It allows infrastructure to be **version-controlled, modular, reviewed before deployment, and reproduced consistently** across multiple environments such as **development, testing, staging, and production**.
 
@@ -43,6 +43,8 @@ Throughout this project, the following technologies and concepts are implemented
 * Enabling **Terraform state locking** for concurrent team collaboration
 * Building a Jenkins CI/CD pipeline for infrastructure provisioning
 * Validating and reviewing infrastructure changes before deployment
+* Applying Infrastructure as Code best practices for reproducibility and automation
+
 * Applying Infrastructure as Code best practices for reproducibility and automation
 
 
