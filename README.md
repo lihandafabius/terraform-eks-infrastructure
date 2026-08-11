@@ -1,10 +1,7 @@
-<p align="center">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="90" alt="Terraform logo"/>
-</p>
+<img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="36" alt="Terraform logo"/>
 
-<h1 align="center">Terraform on AWS</h1>
+# Terraform on AWS – Provisioning Amazon EKS Infrastructure with Remote State and CI/CD
 
-<p align="center"><strong>Provisioning Amazon EKS Infrastructure with Remote State and CI/CD</strong></p>
 
 ---
 
@@ -40,4 +37,3 @@ Throughout this project, the following technologies and concepts are implemented
 * Validating and reviewing infrastructure changes before deployment
 * Applying Infrastructure as Code best practices for reproducibility and automation
 
-Rather than focusing solely on the final infrastructure, this documentation also covers the Terraform architecture, module design, AWS integration, CI/CD workflow, troubleshooting process, and the lessons learned while automating a production-style Kubernetes environment on AWS.
