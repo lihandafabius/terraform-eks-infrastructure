@@ -77,4 +77,44 @@ The Terraform project is organized into reusable modules, separating networking,
 
 The root Terraform configuration orchestrates the entire infrastructure by invoking the VPC, EKS, and MySQL modules. Each module is responsible for a specific part of the infrastructure, allowing changes to be made independently while keeping the overall deployment consistent and reusable.
 
+---
+<details>
+<summary>Exercise 1: Provisioning the EKS Environment with Terraform</summary>
 
+<br />
+
+The Terraform configuration was hosted in a **separate Git repository** from the Java application. This follows Infrastructure as Code and GitOps practices by keeping infrastructure changes independent from application changes. It allows the infrastructure team to version, review, and manage the AWS environment separately while also making it possible to reuse the same Terraform configuration for development, testing, staging, and production environments.
+
+### Terraform Modules
+
+The infrastructure was divided into reusable **Terraform modules** rather than placing all resources inside a single Terraform configuration.
+
+Modules make the configuration easier to maintain because each major part of the infrastructure has its own responsibility. Changes to the networking configuration, for example, can be made independently from the EKS cluster or MySQL configuration.
+
+The first module created was the **VPC module**. The VPC provides the networking foundation required by the EKS cluster and contains both public and private subnets distributed across multiple Availability Zones.
+
+The public subnets provide networking for resources that need external connectivity, while the private subnets are used for the EKS worker nodes and other infrastructure that should not be directly exposed to the internet.
+
+The VPC configuration was parameterized using Terraform variables so that the CIDR ranges and subnet configuration can be changed for different environments without modifying the module itself.
+
+The VPC module exposes the VPC ID and subnet IDs as outputs. These values are then passed to the EKS module, allowing Terraform to automatically establish the dependency between the networking and cluster resources.
+
+### Amazon EKS Cluster
+
+The second module provisions the **Amazon EKS cluster** using the `terraform-aws-modules/eks/aws` module.
+
+```hcl
+module "eks" {
+  source  = "terraform-aws-modules/eks/aws"
+  version = "21.24.1"
+
+  name               = "${var.environment}-${var.application_name}-eks-cluster"
+  kubernetes_version = "1.36"
+
+  subnet_ids = var.private_subnet_ids
+  vpc_id     = var.vpc_id
+
+  endpoint_public_access = true
+
+  enable_cluster_creator_admin_permissions = true
+}
