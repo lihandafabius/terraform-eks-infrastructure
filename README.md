@@ -1,9 +1,7 @@
 <h1 align="left">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="40" height="40" align="center" alt="Terraform Logo" />
-  Terraform on AWS – Provisioning Amazon EKS Infrastructure
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="50" height="50" align="center" alt="Terraform Logo" />
+  Terraform on AWS – Provisioning Amazon EKS Infrastructure with Remote State and CI/CD
 </h1>
-
-> **Remote State & CI/CD Pipeline Integration**
 
 ---
 
