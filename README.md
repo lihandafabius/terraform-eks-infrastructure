@@ -1,9 +1,16 @@
-# <img width="512" height="512" alt="image" src="https://github.com/user-attachments/assets/0da15da0-9a05-4b62-ac9a-9c1845d5e4c0" />
-Terraform on AWS – Provisioning Amazon EKS Infrastructure with Remote State and CI/CD
+<p align="center">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="90" alt="Terraform logo"/>
+</p>
 
-This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. The goal is to create a reusable, modular, and automated infrastructure platform that can be deployed repeatedly across multiple environments such as development, testing, staging, and production.
+<h1 align="center">Terraform on AWS</h1>
 
-Instead of manually creating AWS networking resources, IAM roles, EKS clusters, node groups, and Kubernetes add-ons, the entire infrastructure is defined declaratively using Terraform modules. This makes the infrastructure reproducible, version-controlled, and easier to maintain as the platform evolves.
+<p align="center"><strong>Provisioning Amazon EKS Infrastructure with Remote State and CI/CD</strong></p>
+
+---
+
+This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. The goal is to create a reusable, modular, and automated infrastructure platform that can be deployed repeatedly across multiple environments such as **development, testing, staging, and production**.
+
+Instead of manually creating AWS networking resources, IAM roles, EKS clusters, node groups, and Kubernetes add-ons, the entire infrastructure is defined declaratively using Terraform modules. This approach makes the infrastructure reproducible, version-controlled, and easier to maintain as the platform evolves.
 
 The project provisions an Amazon EKS cluster with:
 
@@ -14,11 +21,11 @@ The project provisions an Amazon EKS cluster with:
 * EKS Pod Identity for secure IAM authentication
 * MySQL deployed through Helm with persistent Amazon EBS volumes
 
-In addition to infrastructure provisioning, the project implements **remote Terraform state management** using Amazon S3 and a **Jenkins CI/CD pipeline** that automatically validates, plans, and applies infrastructure changes from a Git repository. This enables infrastructure updates to follow the same collaborative workflow used for application deployments.
+In addition to infrastructure provisioning, the project implements **remote Terraform state management** using **Amazon S3** and a **Jenkins CI/CD pipeline** that automatically validates, plans, and applies infrastructure changes from a Git repository. This enables infrastructure updates to follow the same collaborative and automated workflow used for application deployments.
 
-## Project Objectives
+## Project objectives
 
-Throughout this project the following technologies and concepts are implemented:
+Throughout this project, the following technologies and concepts are implemented:
 
 * Provisioning AWS infrastructure using **Terraform**
 * Creating a modular Terraform project structure
