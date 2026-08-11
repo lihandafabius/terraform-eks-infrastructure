@@ -1,19 +1,9 @@
-<div align="center">
+<h1 align="left">
+  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="40" height="40" align="center" alt="Terraform Logo" />
+  Terraform on AWS – Provisioning Amazon EKS Infrastructure
+</h1>
 
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="80" height="80" alt="Terraform Logo" />
-
-  <h1>Terraform on AWS</h1>
-
-  <p><b>Provisioning Amazon EKS Infrastructure with Remote State and CI/CD</b></p>
-
-  <!-- Optional Badges -->
-  <p>
-    <img src="https://img.shields.io/badge/AWS-EKS-orange?style=flat-square&logo=amazon-aws" alt="AWS EKS" />
-    <img src="https://img.shields.io/badge/Terraform-1.5+-purple?style=flat-square&logo=terraform" alt="Terraform" />
-    <img src="https://img.shields.io/badge/License-MIT-blue?style=flat-square" alt="License" />
-  </p>
-
-</div>
+> **Remote State & CI/CD Pipeline Integration**
 
 ---
 
