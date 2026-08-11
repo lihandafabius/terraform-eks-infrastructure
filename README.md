@@ -12,8 +12,6 @@
 
 ---
 
----
-
 This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. The goal is to create a reusable, modular, and automated infrastructure platform that can be deployed repeatedly across multiple environments such as **development, testing, staging, and production**.
 
 Instead of manually creating AWS networking resources, IAM roles, EKS clusters, node groups, and Kubernetes add-ons, the entire infrastructure is defined declaratively using Terraform modules. This approach makes the infrastructure reproducible, version-controlled, and easier to maintain as the platform evolves.
