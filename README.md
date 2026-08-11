@@ -79,7 +79,7 @@ The root Terraform configuration orchestrates the entire infrastructure by invok
 
 ---
 <details>
-<summary>Exercise 1: Provisioning the EKS Environment with Terraform</summary>
+<summary>Exercise 1: Create Amazon EKS Cluster</summary>
 
 <br />
 
@@ -118,3 +118,198 @@ module "eks" {
 
   enable_cluster_creator_admin_permissions = true
 }
+````
+
+The cluster name is generated from the environment and application variables rather than being hardcoded. This allows the same Terraform configuration to create separate environments without changing the underlying module.
+
+The cluster runs **Kubernetes 1.36** and is deployed into the private subnets created by the VPC module.
+
+Cluster creator administrator permissions were also enabled so that the identity provisioning the cluster can immediately administer the Kubernetes cluster.
+
+### EKS Add-ons
+
+The EKS configuration also installs the Kubernetes and AWS add-ons required by the environment.
+
+```hcl
+addons = {
+  coredns = {}
+
+  eks-pod-identity-agent = {
+    before_compute = true
+  }
+
+  kube-proxy = {}
+
+  vpc-cni = {
+    before_compute = true
+  }
+
+  aws-ebs-csi-driver = {
+    before_compute = true
+
+    pod_identity_association = [
+      {
+        role_arn        = var.ebs_csi_role_arn
+        service_account = "ebs-csi-controller-sa"
+      }
+    ]
+  }
+}
+```
+
+The configuration installs **CoreDNS**, **kube-proxy**, **Amazon VPC CNI**, the **EKS Pod Identity Agent**, and the **AWS EBS CSI Driver**.
+
+The EBS CSI Driver is particularly important for this project because MySQL requires persistent storage. It allows Kubernetes to dynamically provision Amazon EBS volumes when PersistentVolumeClaims are created.
+
+The add-ons required before worker nodes are available are configured with `before_compute = true`, ensuring that the required components are installed as part of the cluster provisioning process.
+
+### EKS Pod Identity
+
+Instead of configuring long-lived AWS credentials inside Kubernetes workloads, the project uses **EKS Pod Identity** to provide AWS permissions to the EBS CSI Driver.
+
+The EBS CSI Driver is associated with an IAM role through the following configuration:
+
+```hcl
+pod_identity_association = [
+  {
+    role_arn        = var.ebs_csi_role_arn
+    service_account = "ebs-csi-controller-sa"
+  }
+]
+```
+
+This allows the EBS CSI controller to authenticate with AWS and perform the operations required to create and manage EBS volumes.
+
+Using Pod Identity avoids storing AWS access keys inside Kubernetes and provides a cleaner way of connecting Kubernetes service accounts with AWS IAM permissions.
+
+### Managed Node Group
+
+The cluster was configured with an **EKS Managed Node Group** containing three EC2 worker nodes.
+
+```hcl
+eks_managed_node_groups = {
+  default = {
+    ami_type       = var.ami_type
+    instance_types = var.instance_types
+
+    min_size     = 1
+    max_size     = 3
+    desired_size = 3
+  }
+}
+```
+
+The node configuration is parameterized so that the AMI type and EC2 instance type can be changed through Terraform variables.
+
+The node group has a desired capacity of three nodes, with a minimum of one and a maximum of three. This provides multiple worker nodes for running workloads while still allowing the environment to scale down when necessary.
+
+### AWS Fargate
+
+A Fargate profile was created specifically for the Java application namespace.
+
+```hcl
+fargate_profiles = {
+  fargate_profile = {
+    selectors = [
+      {
+        namespace = "java-app"
+      }
+    ]
+  }
+}
+```
+
+This configuration allows workloads deployed into the `java-app` namespace to run on AWS Fargate rather than the EC2 worker nodes.
+
+The result is a mixed compute environment where the Java application can run on Fargate while stateful workloads such as MySQL can run on the managed EC2 nodes where persistent EBS storage is available.
+
+### MySQL with Helm
+
+After the EKS infrastructure was provisioned, the third module was used to deploy **MySQL through Helm**.
+
+The MySQL configuration was separated into a Helm values file so that the database configuration could be managed independently from the Terraform resource that installs the chart.
+
+The deployment uses persistent Amazon EBS storage so that database data is retained when MySQL pods are recreated or rescheduled.
+
+The MySQL module was also configured to depend on the EKS cluster:
+
+```hcl
+depends_on = [module.eks.cluster_name]
+```
+
+This is important because Terraform must create and make the Kubernetes cluster available before attempting to connect to it through the Helm provider.
+
+The MySQL configuration also uses the Bitnami Legacy image repository:
+
+```yaml
+global:
+  security:
+    allowInsecureImages: true
+
+image:
+  registry: docker.io
+  repository: bitnamilegacy/mysql
+  tag: latest
+```
+
+This was required because the Bitnami MySQL repository structure had changed and the MySQL image had been moved to the `bitnamilegacy` repository.
+
+The resulting deployment provides a MySQL database running inside the EKS cluster with persistent storage backed by Amazon EBS.
+
+### Provisioning the Infrastructure
+
+With the modules connected, the complete environment could be provisioned using the standard Terraform workflow.
+
+```bash
+terraform init
+```
+
+Terraform first downloads the required providers and initializes the modules.
+
+The configuration was then validated before creating any resources:
+
+```bash
+terraform validate
+```
+
+A deployment plan was generated to review the resources Terraform intended to create:
+
+```bash
+terraform plan
+```
+
+Finally, the infrastructure was provisioned using:
+
+```bash
+terraform apply
+```
+
+Terraform handled the dependency chain between the components, creating the networking infrastructure first, followed by the EKS cluster and its supporting components, and finally the MySQL Helm deployment.
+
+### Verification
+
+After the Terraform deployment completed, the EKS cluster was connected to `kubectl` using:
+
+```bash
+aws eks update-kubeconfig \
+  --region eu-north-1 \
+  --name <cluster-name>
+```
+
+The worker nodes were then verified:
+
+```bash
+kubectl get nodes
+```
+
+The Kubernetes workloads and system components were also checked:
+
+```bash
+kubectl get pods -A
+```
+
+The completed Terraform deployment successfully provisioned the AWS networking, EKS cluster, managed worker nodes, Fargate profile, EBS CSI Driver, EKS Pod Identity integration, and persistent MySQL deployment from a single version-controlled Infrastructure as Code project.
+
+</details>
+
+
