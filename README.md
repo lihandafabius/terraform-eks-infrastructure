@@ -1,7 +1,16 @@
-<h1 align="left">
-  <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="50" height="50" align="center" alt="Terraform Logo" />
-  Terraform on AWS – Provisioning Amazon EKS Infrastructure with Remote State and CI/CD
-</h1>
+<table>
+  <tr>
+    <td width="70" align="center" valign="middle">
+      <img src="https://cdn.jsdelivr.net/gh/devicons/devicon/icons/terraform/terraform-original.svg" width="55" height="55" alt="Terraform Logo" />
+    </td>
+    <td valign="middle">
+      <h1 style="border-bottom: none; margin: 0; padding: 0; line-height: 1.2;">Terraform on AWS</h1>
+      <span style="font-size: 15px; color: #57606a;">Provisioning Amazon EKS Infrastructure with Remote State &amp; CI/CD</span>
+    </td>
+  </tr>
+</table>
+
+---
 
 ---
 
