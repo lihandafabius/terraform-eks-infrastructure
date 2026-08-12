@@ -246,6 +246,8 @@ The IAM role created by this module is associated with the `ebs-csi-controller-s
 
 > **Note:** EKS Pod Identity is the recommended authentication method for EKS workloads because it provides temporary IAM credentials through Kubernetes service accounts and eliminates the need to manage AWS access keys inside containers.
 
+![cluster creation](images/cluster_verify.png)
+
 
 ### MySQL with Helm
 
