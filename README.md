@@ -249,25 +249,71 @@ The IAM role created by this module is associated with the `ebs-csi-controller-s
 ![cluster creation](images/cluster_verify.png)
 
 
-### MySQL with Helm
+#### MySQL module
 
-After the EKS infrastructure was provisioned, the third module was used to deploy **MySQL through Helm**.
+The **MySQL module** was used to deploy a highly available MySQL database into the Amazon EKS cluster using the **Helm provider**. The database configuration was separated into its own module so that the Helm release and MySQL configuration could be managed independently from the cluster infrastructure.
 
-The MySQL configuration was separated into a Helm values file so that the database configuration could be managed independently from the Terraform resource that installs the chart.
-
-The deployment uses persistent Amazon EBS storage so that database data is retained when MySQL pods are recreated or rescheduled.
-
-The MySQL module was also configured to depend on the EKS cluster:
+The module receives the Kubernetes and Helm providers from the root module and is configured to run only after the EKS cluster has been created.
 
 ```hcl
-depends_on = [module.eks.cluster_name]
+module "mysql" {
+  source = "./modules/mysql"
+
+  providers = {
+    kubernetes = kubernetes
+    helm       = helm
+  }
+
+  depends_on = [module.eks]
+}
 ```
 
-This is important because Terraform must create and make the Kubernetes cluster available before attempting to connect to it through the Helm provider.
+The `depends_on` configuration ensures that Terraform creates and makes the EKS cluster available before attempting to connect to it through the Helm provider.
 
-The MySQL configuration also uses the Bitnami Legacy image repository:
+### Helm deployment
+
+The MySQL database was installed using the **Bitnami MySQL Helm chart**, allowing Terraform to manage the entire deployment lifecycle.
+
+```hcl
+resource "helm_release" "mysql" {
+  name       = "mysql"
+  repository = "oci://registry-1.docker.io/bitnamicharts"
+  chart      = "mysql"
+
+  values = [
+    file("${path.module}/values.yaml")
+  ]
+
+  timeout = 600
+}
+```
+
+The Helm values were stored separately in a `values.yaml` file, making it easier to manage replication, storage, and authentication settings without modifying the Terraform resource.
+
+### MySQL configuration
+
+The database was deployed in **replication mode** with one primary instance and **two secondary replicas**. Persistent Amazon EBS volumes were configured for both the primary and replica instances using the `gp2` storage class.
 
 ```yaml
+architecture: replication
+
+primary:
+  persistence:
+    storageClass: gp2
+
+secondary:
+  replicaCount: 2
+  persistence:
+    storageClass: gp2
+
+auth:
+  username: 
+  password: 
+  rootPassword: 
+
+  replicationUser: replicator
+  replicationPassword: 
+
 global:
   security:
     allowInsecureImages: true
@@ -278,63 +324,11 @@ image:
   tag: latest
 ```
 
-This was required because the Bitnami MySQL repository structure had changed and the MySQL image had been moved to the `bitnamilegacy` repository.
+The deployment provides a **primary MySQL instance and two replicas**, with each instance backed by its own persistent Amazon EBS volume.
 
-The resulting deployment provides a MySQL database running inside the EKS cluster with persistent storage backed by Amazon EBS.
+![Mysql deployment](images/mysql.png)
 
-### Provisioning the Infrastructure
 
-With the modules connected, the complete environment could be provisioned using the standard Terraform workflow.
-
-```bash
-terraform init
-```
-
-Terraform first downloads the required providers and initializes the modules.
-
-The configuration was then validated before creating any resources:
-
-```bash
-terraform validate
-```
-
-A deployment plan was generated to review the resources Terraform intended to create:
-
-```bash
-terraform plan
-```
-
-Finally, the infrastructure was provisioned using:
-
-```bash
-terraform apply
-```
-
-Terraform handled the dependency chain between the components, creating the networking infrastructure first, followed by the EKS cluster and its supporting components, and finally the MySQL Helm deployment.
-
-### Verification
-
-After the Terraform deployment completed, the EKS cluster was connected to `kubectl` using:
-
-```bash
-aws eks update-kubeconfig \
-  --region eu-north-1 \
-  --name <cluster-name>
-```
-
-The worker nodes were then verified:
-
-```bash
-kubectl get nodes
-```
-
-The Kubernetes workloads and system components were also checked:
-
-```bash
-kubectl get pods -A
-```
-
-The completed Terraform deployment successfully provisioned the AWS networking, EKS cluster, managed worker nodes, Fargate profile, EBS CSI Driver, EKS Pod Identity integration, and persistent MySQL deployment from a single version-controlled Infrastructure as Code project.
 
 </details>
 
