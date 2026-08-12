@@ -330,6 +330,7 @@ The deployment provides a **primary MySQL instance and two replicas**, with each
 
 </details>
 
+---
 <details>
 <summary>Exercise 2: Configure remote state</summary>
 
@@ -373,13 +374,11 @@ This protects the state file from concurrent modifications and ensures that infr
 
 <br />
 
-To align infrastructure deployments with modern DevOps and Infrastructure as Code practices, a dedicated **Jenkins pipeline** was created for the Terraform project. This allows infrastructure changes to follow the same workflow as application deployments, where changes are committed to Git, reviewed, validated, and deployed through an automated CI/CD process.
+To automate infrastructure deployments, a dedicated **Jenkins pipeline** was created for the Terraform project. This allows infrastructure changes to follow the same workflow as application deployments, where changes are committed to Git, validated, reviewed, and deployed through a controlled CI/CD process.
 
-By managing infrastructure through a pipeline, every change becomes version-controlled, repeatable, auditable, and easier to collaborate on within a team environment.
+The pipeline performs **Terraform initialization, formatting validation, configuration validation, plan generation, and deployment**, ensuring that infrastructure changes are verified before they are applied.
 
 ### Terraform Jenkins Pipeline
-
-The pipeline was implemented using a Jenkinsfile stored alongside the Terraform configuration.
 
 ```groovy
 #!/usr/bin/env groovy
@@ -388,59 +387,59 @@ pipeline {
     agent any
 
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
-        AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
-        AWS_DEFAULT_REGION    = 'eu-north-1'
-        TF_IN_AUTOMATION      = 'true'
+        AWS_ACCESS_KEY_ID     = credentials("jenkins_aws_access_key_id")
+        AWS_SECRET_ACCESS_KEY = credentials("jenkins_aws_secret_access_key")
+        AWS_DEFAULT_REGION    = "eu-north-1"
+        TF_IN_AUTOMATION      = "true"
     }
 
     stages {
 
-        stage('Checkout') {
+        stage("Checkout") {
             steps {
                 checkout scm
             }
         }
 
-        stage('Terraform init') {
+        stage("Terraform init") {
             steps {
-                dir('terraform') {
-                    sh 'terraform init'
+                dir("terraform") {
+                    sh "terraform init"
                 }
             }
         }
 
-        stage('Terraform format check') {
+        stage("Terraform format check") {
             steps {
-                dir('terraform') {
-                    sh 'terraform fmt -check'
+                dir("terraform") {
+                    sh "terraform fmt -check"
                 }
             }
         }
 
-        stage('Terraform validate') {
+        stage("Terraform validate") {
             steps {
-                dir('terraform') {
-                    sh 'terraform validate'
+                dir("terraform") {
+                    sh "terraform validate"
                 }
             }
         }
 
-        stage('Terraform plan') {
+        stage("Terraform plan") {
             steps {
-                dir('terraform') {
-                    sh 'terraform plan -out=tfplan'
-                    sh 'terraform show tfplan'
+                dir("terraform") {
+                    sh "terraform plan -out=tfplan"
+                    sh "terraform show tfplan"
                 }
             }
         }
 
-        stage('Terraform apply') {
+        stage("Terraform apply") {
             steps {
-                input message: 'Review the Terraform plan in the build logs. Apply these changes?'
+                input message: "Review the Terraform plan in the build logs. Apply these changes?"
 
-                dir('terraform') {
-                    sh 'terraform apply -auto-approve tfplan'
+                dir("terraform") {
+                    sh "terraform apply -auto-approve tfplan"
                 }
             }
         }
@@ -448,106 +447,50 @@ pipeline {
 }
 ```
 
-### Terraform Automation Mode
+### Terraform automation mode
 
 The pipeline enables Terraform automation mode using:
 
 ```groovy
-TF_IN_AUTOMATION = 'true'
+TF_IN_AUTOMATION = "true"
 ```
 
-This environment variable is recommended when running Terraform inside CI/CD systems because it optimizes Terraform for automated execution rather than interactive terminal usage.
+This configures Terraform for non-interactive execution in CI/CD environments, producing cleaner logs, suppressing interactive prompts, and generating more consistent output during automated deployments.
 
-Some benefits include:
+### Format and validation
 
-- Produces cleaner and more predictable output for CI/CD logs.
-- Removes interactive prompts that would otherwise pause pipeline execution.
-- Reduces unnecessary progress indicators and terminal formatting.
-- Makes Terraform output easier to read when troubleshooting pipeline failures.
-- Improves consistency across automated infrastructure deployments.
-
-### Terraform Initialization
-
-The pipeline begins by running:
-
-```bash
-terraform init
-```
-
-This command downloads the required providers, initializes the S3 backend configuration, and prepares the working directory before any Terraform operations can be executed.
-
-### Terraform Format Validation
-
-Before validating or deploying infrastructure changes, the pipeline checks that all Terraform files follow standard formatting conventions.
+Before any infrastructure changes are planned or applied, the pipeline runs:
 
 ```bash
 terraform fmt -check
-```
-
-This stage helps enforce a consistent code style across the project and prevents improperly formatted Terraform code from being merged into the repository.
-
-> **Note:** `terraform fmt -check` does not modify files. It only verifies whether the configuration already complies with Terraform formatting standards.
-
-### Terraform Validation
-
-The next stage validates the Terraform configuration.
-
-```bash
 terraform validate
 ```
 
-This verifies that the configuration syntax is correct and that Terraform can successfully interpret all resources, modules, variables, and references before attempting to create infrastructure.
+These stages ensure that the Terraform configuration follows standard formatting conventions and that the configuration is syntactically valid before deployment begins.
 
-### Terraform Plan Review
+### Plan review and approval
 
-Before applying any changes, Terraform generates an execution plan.
+Terraform generates a deployment plan and displays it in the Jenkins build logs:
 
 ```bash
 terraform plan -out=tfplan
 terraform show tfplan
 ```
 
-The generated plan shows exactly what Terraform intends to create, modify, or destroy within the AWS environment.
-
-Saving the plan to a file ensures that the exact plan reviewed by the team is the same plan that will eventually be applied.
-
-### Manual Approval Gate
-
-To reduce the risk of accidental infrastructure changes, a manual approval step was added before the apply stage.
+A **manual approval gate** was added before the apply stage:
 
 ```groovy
-input message: 'Review the Terraform plan in the build logs. Apply these changes?'
+input message: "Review the Terraform plan in the build logs. Apply these changes?"
 ```
 
-This pauses the pipeline and requires a team member to review the proposed infrastructure changes before deployment continues.
+This allows the proposed infrastructure changes to be reviewed before deployment continues, providing an additional layer of control for shared or production environments.
 
-The approval gate provides an additional layer of control, especially when working with shared environments where infrastructure modifications can affect multiple applications or teams.
-
-### Terraform Apply
-
-After approval is granted, the previously generated plan is applied.
+After approval, the saved plan is applied using:
 
 ```bash
 terraform apply -auto-approve tfplan
 ```
 
-Since the plan was already reviewed and approved, the `-auto-approve` flag can be safely used to complete the deployment without requiring another confirmation prompt.
-
-Using the saved plan file also guarantees that Terraform applies the exact changes that were reviewed during the planning stage.
-
-> **Note:** Separating the `plan` and `apply` stages is considered a best practice because it gives teams an opportunity to review infrastructure changes before they are deployed, reducing the likelihood of unexpected modifications to production environments.
-
-### Verification
-
-Verify that the Jenkins pipeline completed successfully and that the Terraform resources were created in AWS.
-
-```bash
-terraform state list
-```
-
-You can also verify the EKS cluster, node groups, VPC resources, and supporting infrastructure from the AWS Console or AWS CLI.
+Applying the saved plan ensures that Terraform deploys the exact infrastructure changes that were reviewed during the planning stage.
 
 </details>
-
-
-
