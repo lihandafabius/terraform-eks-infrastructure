@@ -88,23 +88,53 @@ The root Terraform configuration orchestrates the entire infrastructure by invok
 
 The Terraform configuration was hosted in a **separate Git repository** from the Java application. This follows Infrastructure as Code and GitOps practices by keeping infrastructure changes independent from application changes. It allows the infrastructure team to version, review, and manage the AWS environment separately while also making it possible to reuse the same Terraform configuration for development, testing, staging, and production environments.
 
-### Terraform Modules
+### Terraform modules
 
-The infrastructure was divided into reusable **Terraform modules** rather than placing all resources inside a single Terraform configuration.
+The infrastructure was divided into reusable **Terraform modules** rather than placing all resources in a single Terraform configuration. The project was organized into three main modules: **VPC**, **EKS**, and **MySQL**, making the infrastructure easier to maintain, reuse, and manage independently.
 
-Modules make the configuration easier to maintain because each major part of the infrastructure has its own responsibility. Changes to the networking configuration, for example, can be made independently from the EKS cluster or MySQL configuration.
+### VPC module
 
-The first module created was the **VPC module**. The VPC provides the networking foundation required by the EKS cluster and contains both public and private subnets distributed across multiple Availability Zones.
+The **VPC module** provides the networking foundation for the Amazon EKS cluster. It creates a VPC with **public and private subnets** distributed across multiple Availability Zones. Public subnets are used for internet-facing resources such as load balancers and the NAT Gateway, while private subnets host the EKS worker nodes and Fargate workloads.
 
-The public subnets provide networking for resources that need external connectivity, while the private subnets are used for the EKS worker nodes and other infrastructure that should not be directly exposed to the internet.
+The module was implemented using the official **terraform-aws-modules/vpc/aws** module and configured with a **single NAT Gateway**, DNS hostnames, and subnet tagging required for Amazon EKS.
 
-The VPC configuration was parameterized using Terraform variables so that the CIDR ranges and subnet configuration can be changed for different environments without modifying the module itself.
+```hcl
+module "vpc" {
+  source  = "terraform-aws-modules/vpc/aws"
+  version = "6.6.1"
 
-The VPC module exposes the VPC ID and subnet IDs as outputs. These values are then passed to the EKS module, allowing Terraform to automatically establish the dependency between the networking and cluster resources.
+  name             = "${var.application_name}_vpc"
+  cidr             = var.vpc_cidr_block
+  private_subnets  = var.private_subnet_cidr_blocks
+  public_subnets   = var.public_subnet_cidr_blocks
+  azs              = data.aws_availability_zones.azs.names
 
-### Amazon EKS Cluster
+  enable_nat_gateway   = true
+  single_nat_gateway   = true
+  enable_dns_hostnames = true
 
-The second module provisions the **Amazon EKS cluster** using the `terraform-aws-modules/eks/aws` module.
+  tags = {
+    "kubernetes.io/cluster/${var.environment}-${var.application_name}-eks-cluster" = "shared"
+  }
+
+  public_subnet_tags = {
+    "kubernetes.io/cluster/${var.environment}-${var.application_name}-eks-cluster" = "shared"
+    "kubernetes.io/role/elb" = 1
+  }
+
+  private_subnet_tags = {
+    "kubernetes.io/cluster/${var.environment}-${var.application_name}-eks-cluster" = "shared"
+    "kubernetes.io/role/internal-elb" = 1
+  }
+}
+```
+
+> **Note:** The subnet tags allow Amazon EKS to automatically identify which subnets should be used for **public load balancers** and **internal load balancers**, enabling Kubernetes services of type `LoadBalancer` to integrate correctly with AWS networking.
+
+
+### Amazon EKS module
+
+The **EKS module** provisions the Kubernetes control plane, managed worker nodes, AWS Fargate profile, and the Kubernetes add-ons required by the environment. The cluster was created using the official **terraform-aws-modules/eks/aws** module and deployed into the private subnets created by the VPC module.
 
 ```hcl
 module "eks" {
@@ -121,17 +151,52 @@ module "eks" {
 
   enable_cluster_creator_admin_permissions = true
 }
-````
+```
 
-The cluster name is generated from the environment and application variables rather than being hardcoded. This allows the same Terraform configuration to create separate environments without changing the underlying module.
+The cluster name is generated from Terraform variables, allowing the same configuration to create multiple environments without modifying the module. The cluster runs **Kubernetes 1.36**, exposes a public API endpoint, and enables administrator access for the identity that provisions the cluster.
 
-The cluster runs **Kubernetes 1.36** and is deployed into the private subnets created by the VPC module.
+### Managed node group
 
-Cluster creator administrator permissions were also enabled so that the identity provisioning the cluster can immediately administer the Kubernetes cluster.
+The cluster was configured with an **EKS Managed Node Group** running EC2 worker nodes for stateful workloads such as MySQL.
 
-### EKS Add-ons
+```hcl
+eks_managed_node_groups = {
+  default = {
+    ami_type       = var.ami_type
+    instance_types = var.instance_types
 
-The EKS configuration also installs the Kubernetes and AWS add-ons required by the environment.
+    min_size     = 1
+    max_size     = 3
+    desired_size = 3
+  }
+}
+```
+
+The node group maintains **three worker nodes** by default and can scale between **one and three nodes**. The AMI type and EC2 instance type are parameterized through Terraform variables, making the configuration reusable across different environments.
+
+### AWS Fargate profile
+
+A dedicated **AWS Fargate profile** was created for the `java-app` namespace so that application workloads can run without managing EC2 instances.
+
+```hcl
+fargate_profiles = {
+  fargate_profile = {
+    selectors = [
+      {
+        namespace = "java-app"
+      }
+    ]
+  }
+}
+```
+
+Any workload deployed into the `java-app` namespace is automatically scheduled onto **AWS Fargate**, while stateful workloads such as MySQL continue to run on the managed EC2 nodes where Amazon EBS storage is available.
+
+> **Note:** Fargate is well suited for stateless application workloads, while stateful applications such as MySQL are better suited for EC2 worker nodes that can attach persistent EBS volumes.
+
+### EKS add-ons
+
+The cluster was configured with the Kubernetes and AWS add-ons required for networking, DNS, authentication, and persistent storage.
 
 ```hcl
 addons = {
@@ -160,71 +225,27 @@ addons = {
 }
 ```
 
-The configuration installs **CoreDNS**, **kube-proxy**, **Amazon VPC CNI**, the **EKS Pod Identity Agent**, and the **AWS EBS CSI Driver**.
-
-The EBS CSI Driver is particularly important for this project because MySQL requires persistent storage. It allows Kubernetes to dynamically provision Amazon EBS volumes when PersistentVolumeClaims are created.
-
-The add-ons required before worker nodes are available are configured with `before_compute = true`, ensuring that the required components are installed as part of the cluster provisioning process.
+The configuration installs **CoreDNS**, **kube-proxy**, **Amazon VPC CNI**, the **EKS Pod Identity Agent**, and the **AWS EBS CSI Driver**. The EBS CSI Driver enables Kubernetes to dynamically provision **Amazon EBS volumes**, which are required for MySQL persistent storage.
 
 ### EKS Pod Identity
 
-Instead of configuring long-lived AWS credentials inside Kubernetes workloads, the project uses **EKS Pod Identity** to provide AWS permissions to the EBS CSI Driver.
-
-The EBS CSI Driver is associated with an IAM role through the following configuration:
+To allow the EBS CSI Driver to interact with AWS securely, the project uses **EKS Pod Identity** instead of storing AWS credentials inside Kubernetes.
 
 ```hcl
-pod_identity_association = [
-  {
-    role_arn        = var.ebs_csi_role_arn
-    service_account = "ebs-csi-controller-sa"
-  }
-]
-```
+module "ebs_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 2.5"
 
-This allows the EBS CSI controller to authenticate with AWS and perform the operations required to create and manage EBS volumes.
+  name = "${var.environment}-ebs-csi"
 
-Using Pod Identity avoids storing AWS access keys inside Kubernetes and provides a cleaner way of connecting Kubernetes service accounts with AWS IAM permissions.
-
-### Managed Node Group
-
-The cluster was configured with an **EKS Managed Node Group** containing three EC2 worker nodes.
-
-```hcl
-eks_managed_node_groups = {
-  default = {
-    ami_type       = var.ami_type
-    instance_types = var.instance_types
-
-    min_size     = 1
-    max_size     = 3
-    desired_size = 3
-  }
+  attach_aws_ebs_csi_policy = true
 }
 ```
 
-The node configuration is parameterized so that the AMI type and EC2 instance type can be changed through Terraform variables.
+The IAM role created by this module is associated with the `ebs-csi-controller-sa` service account, allowing the EBS CSI controller to create, attach, detach, and manage Amazon EBS volumes without exposing long-lived AWS access keys inside the cluster.
 
-The node group has a desired capacity of three nodes, with a minimum of one and a maximum of three. This provides multiple worker nodes for running workloads while still allowing the environment to scale down when necessary.
+> **Note:** EKS Pod Identity is the recommended authentication method for EKS workloads because it provides temporary IAM credentials through Kubernetes service accounts and eliminates the need to manage AWS access keys inside containers.
 
-### AWS Fargate
-
-A Fargate profile was created specifically for the Java application namespace.
-
-```hcl
-fargate_profiles = {
-  fargate_profile = {
-    selectors = [
-      {
-        namespace = "java-app"
-      }
-    ]
-  }
-}
-```
-
-This configuration allows workloads deployed into the `java-app` namespace to run on AWS Fargate rather than the EC2 worker nodes.
-
-The result is a mixed compute environment where the Java application can run on Fargate while stateful workloads such as MySQL can run on the managed EC2 nodes where persistent EBS storage is available.
 
 ### MySQL with Helm
 
