@@ -2,7 +2,6 @@ terraform {
   required_version = ">= 1.0.0"
   backend "s3" {
     bucket       = "fabius-lihanda-s3-bucket"
-    key          = "java-app/state.tfstate"
     region       = "eu-north-1" # region should be the same across so multiple developers can work on the same state file
     use_lockfile = true         # state to prevent concurrent modifications
   }
