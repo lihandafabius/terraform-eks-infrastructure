@@ -45,8 +45,6 @@ Throughout this project, the following technologies and concepts are implemented
 * Validating and reviewing infrastructure changes before deployment
 * Applying Infrastructure as Code best practices for reproducibility and automation
 
-* Applying Infrastructure as Code best practices for reproducibility and automation
-
 
 ## Project structure
 
@@ -369,6 +367,7 @@ This protects the state file from concurrent modifications and ensures that infr
 
 </details>
 
+---
 <details>
 <summary>Exercise 3: CI/CD Pipeline for Terraform Provisioning</summary>
 
@@ -494,3 +493,4 @@ terraform apply -auto-approve tfplan
 Applying the saved plan ensures that Terraform deploys the exact infrastructure changes that were reviewed during the planning stage.
 
 </details>
+---
