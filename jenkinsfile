@@ -27,9 +27,10 @@ pipeline {
             }
             steps {
                 dir('terraform') {
+                    // set the backend key based on the environment parameter
                     sh """
                         terraform init \
-                        -backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate" // set the backend key based on the environment parameter
+                        -backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate" 
                     """
                 }
             }
@@ -62,7 +63,8 @@ pipeline {
             }
             steps {
                 dir('terraform') {
-                    sh "terraform plan -var-file=${params.ENVIRONMENT}.tfvars -out=tfplan" // select the appropriate variable file based on the environment parameter
+                    // select the appropriate variable file based on the environment parameter
+                    sh "terraform plan -var-file=${params.ENVIRONMENT}.tfvars -out=tfplan" 
                     sh 'terraform show tfplan'
                 }
             }
@@ -74,7 +76,8 @@ pipeline {
                 AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
             }
             steps {
-                timeout(time: 1, unit: 'HOURS') { // Prevent the pipeline from waiting indefinitely for approval
+                timeout(time: 1, unit: 'HOURS') {
+                    // Prevent the pipeline from waiting indefinitely for approval
                     input message: "Apply Terraform changes to ${params.ENVIRONMENT}?"
                 }
 
