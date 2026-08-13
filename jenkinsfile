@@ -20,6 +20,7 @@ pipeline {
             }
         }
 
+
         stage('Terraform init') {
             environment {
                 AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
@@ -27,10 +28,12 @@ pipeline {
             }
             steps {
                 dir('terraform') {
+                    // do not migrate the state file to a new backend, just reconfigure the existing backend
                     // set the backend key based on the environment parameter
                     sh """
-                        terraform init \
-                        -backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate" 
+                    
+                        terraform init -reconfigure \
+                        -backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate"
                     """
                 }
             }
