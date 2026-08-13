@@ -3,10 +3,13 @@
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'test', 'staging', 'prod'], description: 'Target environment')
+    }
+
     environment {
-        AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
-        AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
-        AWS_DEFAULT_REGION    = 'eu-north-1'
+        AWS_DEFAULT_REGION = 'eu-north-1'
+        TF_IN_AUTOMATION   = 'true'
     }
 
     stages {
@@ -18,6 +21,10 @@ pipeline {
         }
 
         stage('Terraform init') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
                 dir('terraform') {
                     sh 'terraform init'
@@ -34,6 +41,10 @@ pipeline {
         }
 
         stage('Terraform validate') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
                 dir('terraform') {
                     sh 'terraform validate'
@@ -42,17 +53,28 @@ pipeline {
         }
 
         stage('Terraform plan') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
                 dir('terraform') {
-                    sh 'terraform plan -out=tfplan'
+                    sh "terraform plan -var-file=${params.ENVIRONMENT}.tfvars -out=tfplan"
                     sh 'terraform show tfplan'
                 }
             }
         }
 
         stage('Terraform apply') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
-                input message: 'Review the Terraform plan in the build logs. Apply these changes?'
+                timeout(time: 1, unit: 'HOURS') {
+                    input message: "Apply Terraform changes to ${params.ENVIRONMENT}?"
+                }
+
                 dir('terraform') {
                     sh 'terraform apply -auto-approve tfplan'
                 }
