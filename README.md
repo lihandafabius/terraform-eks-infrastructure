@@ -492,6 +492,9 @@ parameters {
 
 This allows the same pipeline to provision **development**, **staging**, and **production** environments without duplicating pipeline definitions. The selected environment is used to determine both the Terraform backend state file and the corresponding `*.tfvars` configuration file.
 
+![Building with parameters](images/parameter_choice.png)
+
+
 ### Terraform initialization
 
 Terraform is initialized using:
@@ -560,6 +563,8 @@ terraform apply -auto-approve tfplan
 ```
 
 Applying the saved plan ensures that Terraform deploys the **exact infrastructure changes that were reviewed during the planning stage**, providing a more predictable and controlled deployment process.
+
+![Jenkins CI pipeline](images/jenkins_ci.png)
 
 </details>
 
