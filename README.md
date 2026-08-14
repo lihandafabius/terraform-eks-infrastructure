@@ -569,3 +569,87 @@ Applying the saved plan ensures that Terraform deploys the **exact infrastructur
 </details>
 
 ---
+
+<details>
+<summary>Challenges</summary>
+
+<br />
+
+### 1. AWS EBS CSI Driver Authentication Failure
+
+While deploying persistent storage for MySQL, the EBS CSI Driver failed to provision Amazon EBS volumes. The controller logs showed repeated authentication and credential retrieval errors.
+
+```text
+Failed health check (verify network connection and IAM credentials)
+failed to refresh cached credentials
+no EC2 IMDS role found
+```
+
+![EBS CSI Authentication Error](images/ebs_Csi_error.png)
+
+The root cause was that the EBS CSI controller pods did not have a valid AWS identity. Modern EKS deployments using **Pod Identity** do not rely on the worker node IAM role for storage operations. As a result, attaching the EBS permissions to the node group was not sufficient because the CSI controller pods could not obtain AWS credentials.
+
+### Resolution
+
+The issue was resolved by creating a dedicated IAM role for the EBS CSI Driver using **EKS Pod Identity** and attaching the required Amazon EBS CSI policy.
+
+```hcl
+module "ebs_csi_pod_identity" {
+  source  = "terraform-aws-modules/eks-pod-identity/aws"
+  version = "~> 2.5"
+
+  name = "${var.environment}-ebs-csi"
+
+  attach_aws_ebs_csi_policy = true
+}
+```
+
+The IAM role was then associated with the EBS CSI Driver add-on, allowing the controller pods to authenticate with AWS and provision EBS volumes successfully.
+
+```hcl
+aws-ebs-csi-driver = {
+  before_compute = true
+  pod_identity_association = [
+    {
+      role_arn        = var.ebs_csi_role_arn
+      service_account = "ebs-csi-controller-sa"
+    }
+  ]
+}
+```
+
+### 2. Terraform Circular Dependency
+
+During infrastructure provisioning, Terraform reported a circular dependency between resources responsible for creating the EKS cluster and resources that depended on the cluster being available.
+
+A circular dependency occurs when Terraform cannot determine which resource should be created first because two or more resources indirectly depend on each other.
+
+For example:
+
+```text
+Resource A depends on Resource B
+Resource B depends on Resource A
+```
+
+In this project, the Kubernetes and Helm providers required a running EKS cluster, while some cluster-related resources were being evaluated before the cluster was fully available.
+
+### Resolution
+
+The dependency chain was broken by separating infrastructure provisioning from Kubernetes resource deployment and explicitly defining dependencies where required.
+
+```hcl
+data "aws_eks_cluster" "cluster" {
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+
+data "aws_eks_cluster_auth" "cluster" {
+  name       = module.eks.cluster_name
+  depends_on = [module.eks]
+}
+```
+
+The Kubernetes and Helm providers were configured only after the EKS cluster had been successfully created, allowing Terraform to build the dependency graph correctly.
+
+</details>
+
