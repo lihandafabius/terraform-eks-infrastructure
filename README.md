@@ -618,6 +618,8 @@ aws-ebs-csi-driver = {
 }
 ```
 
+![EBS CSI Authentication Error Fixed](images/ebs_csi_issue_fixed.png)
+
 ### 2. Terraform Circular Dependency
 
 During infrastructure provisioning, Terraform reported a circular dependency between resources responsible for creating the EKS cluster and resources that depended on the cluster being available.
@@ -652,4 +654,6 @@ data "aws_eks_cluster_auth" "cluster" {
 The Kubernetes and Helm providers were configured only after the EKS cluster had been successfully created, allowing Terraform to build the dependency graph correctly.
 
 </details>
+
+---
 
