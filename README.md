@@ -11,7 +11,7 @@
 </table>
 
 ---
-This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. In the [previous project](https://github.com/lihandafabius/Devops_Nana-Techworld_Bootcamp/blob/main/kubernetes-on-AWS-exercises/README.md), the EKS cluster and its supporting infrastructure were provisioned using **eksctl**, while the VPC was created using an AWS **CloudFormation VPC template**. This project builds on that environment by moving the infrastructure provisioning into Terraform.
+This project demonstrates how to provision and manage a complete **Amazon Elastic Kubernetes Service (Amazon EKS)** environment using **Terraform** following Infrastructure as Code (IaC) best practices. In my [previous project](https://github.com/lihandafabius/Devops_Nana-Techworld_Bootcamp/blob/main/kubernetes-on-AWS-exercises/README.md), EKS cluster and its supporting infrastructure were provisioned using **eksctl**, while the VPC was created using an AWS **CloudFormation VPC template**. This project builds on that environment by moving the infrastructure provisioning into Terraform.
 
 Using Terraform provides a more consistent and reusable way to manage the entire infrastructure from a single IaC tool. It allows infrastructure to be **version-controlled, modular, reviewed before deployment, and reproduced consistently** across multiple environments such as **development, testing, staging, and production**.
 
@@ -39,6 +39,7 @@ Throughout this project, the following technologies and concepts are implemented
 * Deploying MySQL using Helm with persistent Amazon EBS storage
 * Installing and configuring the AWS EBS CSI Driver
 * Implementing **EKS Pod Identity** for secure IAM authentication
+* Provisioning isolated **development, staging, and production environments** from a single Terraform codebase
 * Configuring remote Terraform state in Amazon S3
 * Enabling **Terraform state locking** for concurrent team collaboration
 * Building a Jenkins CI/CD pipeline for infrastructure provisioning
@@ -46,9 +47,10 @@ Throughout this project, the following technologies and concepts are implemented
 * Applying Infrastructure as Code best practices for reproducibility and automation
 
 
+
 ## Project structure
 
-The Terraform project is organized into reusable modules, separating networking, Kubernetes infrastructure, and application storage components. This modular structure makes the infrastructure easier to maintain, extend, and reuse across multiple environments.
+The Terraform project is organized into reusable modules, separating networking, Kubernetes infrastructure, and application storage components. Environment-specific configuration is managed through dedicated **Terraform variable files** (`dev.tfvars`, `staging.tfvars`, and `prod.tfvars`), allowing the same infrastructure code to be deployed across multiple environments while maintaining separate configurations and remote state files.
 
 ```text
 .
@@ -60,6 +62,9 @@ The Terraform project is organized into reusable modules, separating networking,
     ├── providers.tf
     ├── variables.tf
     ├── outputs.tf
+    ├── dev.tfvars
+    ├── staging.tfvars
+    ├── prod.tfvars
     └── modules
         ├── vpc
         │   ├── main.tf
@@ -76,7 +81,7 @@ The Terraform project is organized into reusable modules, separating networking,
             └── values.yaml
 ```
 
-The root Terraform configuration orchestrates the entire infrastructure by invoking the VPC, EKS, and MySQL modules. Each module is responsible for a specific part of the infrastructure, allowing changes to be made independently while keeping the overall deployment consistent and reusable.
+The root Terraform configuration orchestrates the entire infrastructure by invoking the **VPC**, **EKS**, and **MySQL** modules. Each module is responsible for a specific part of the infrastructure, allowing networking, Kubernetes resources, and database configuration to be managed independently. The environment-specific variable files provide a simple way to customize deployments for **development**, **staging**, and **production** while keeping the Terraform codebase consistent and reusable.
 
 ---
 <details>
