@@ -378,6 +378,7 @@ This protects the state file from concurrent modifications and ensures that infr
 </details>
 
 ---
+
 <details>
 <summary>Exercise 3: CI/CD Pipeline for Terraform Provisioning</summary>
 
@@ -387,7 +388,7 @@ To automate infrastructure deployments, a dedicated **Jenkins pipeline** was cre
 
 The pipeline performs **Terraform initialization, formatting validation, configuration validation, plan generation, and deployment**, ensuring that infrastructure changes are verified before they are applied.
 
-### Terraform Jenkins Pipeline
+### Terraform Jenkins pipeline
 
 ```groovy
 #!/usr/bin/env groovy
@@ -395,60 +396,83 @@ The pipeline performs **Terraform initialization, formatting validation, configu
 pipeline {
     agent any
 
+    parameters {
+        choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
+    }
+
     environment {
-        AWS_ACCESS_KEY_ID     = credentials("jenkins_aws_access_key_id")
-        AWS_SECRET_ACCESS_KEY = credentials("jenkins_aws_secret_access_key")
-        AWS_DEFAULT_REGION    = "eu-north-1"
-        TF_IN_AUTOMATION      = "true"
+        AWS_DEFAULT_REGION = 'eu-north-1'
+        TF_IN_AUTOMATION   = 'true'
     }
 
     stages {
 
-        stage("Checkout") {
+        stage('Checkout') {
             steps {
                 checkout scm
             }
         }
 
-        stage("Terraform init") {
+        stage('Terraform init') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
-                dir("terraform") {
-                    sh "terraform init"
+                dir('terraform') {
+                    sh """
+                        terraform init -reconfigure \
+                        -backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate"
+                    """
                 }
             }
         }
 
-        stage("Terraform format check") {
+        stage('Terraform format check') {
             steps {
-                dir("terraform") {
-                    sh "terraform fmt -check"
+                dir('terraform') {
+                    sh 'terraform fmt -check'
                 }
             }
         }
 
-        stage("Terraform validate") {
+        stage('Terraform validate') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
-                dir("terraform") {
-                    sh "terraform validate"
+                dir('terraform') {
+                    sh 'terraform validate'
                 }
             }
         }
 
-        stage("Terraform plan") {
+        stage('Terraform plan') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
-                dir("terraform") {
-                    sh "terraform plan -out=tfplan"
-                    sh "terraform show tfplan"
+                dir('terraform') {
+                    sh "terraform plan -var-file=${params.ENVIRONMENT}.tfvars -out=tfplan"
+                    sh 'terraform show tfplan'
                 }
             }
         }
 
-        stage("Terraform apply") {
+        stage('Terraform apply') {
+            environment {
+                AWS_ACCESS_KEY_ID     = credentials('jenkins_aws_access_key_id')
+                AWS_SECRET_ACCESS_KEY = credentials('jenkins_aws_secret_access_key')
+            }
             steps {
-                input message: "Review the Terraform plan in the build logs. Apply these changes?"
+                timeout(time: 1, unit: 'HOURS') {
+                    input message: "Apply Terraform changes to ${params.ENVIRONMENT}?"
+                }
 
-                dir("terraform") {
-                    sh "terraform apply -auto-approve tfplan"
+                dir('terraform') {
+                    sh 'terraform apply -auto-approve tfplan'
                 }
             }
         }
@@ -456,12 +480,37 @@ pipeline {
 }
 ```
 
+### Environment selection
+
+The pipeline was parameterized using a **Jenkins choice parameter**, allowing the target environment to be selected when the pipeline is executed.
+
+```groovy
+parameters {
+    choice(name: 'ENVIRONMENT', choices: ['dev', 'staging', 'prod'], description: 'Target environment')
+}
+```
+
+This allows the same pipeline to provision **development**, **staging**, and **production** environments without duplicating pipeline definitions. The selected environment is used to determine both the Terraform backend state file and the corresponding `*.tfvars` configuration file.
+
+### Terraform initialization
+
+Terraform is initialized using:
+
+```bash
+terraform init -reconfigure \
+-backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate"
+```
+
+The `-reconfigure` flag forces Terraform to use the backend configuration provided by the pipeline without attempting to migrate state from a previous backend configuration. This is important because the backend key changes depending on the selected environment.
+
+Using a dynamic backend key ensures that each environment maintains its **own isolated Terraform state file**, preventing changes in one environment from affecting another.
+
 ### Terraform automation mode
 
 The pipeline enables Terraform automation mode using:
 
 ```groovy
-TF_IN_AUTOMATION = "true"
+TF_IN_AUTOMATION = 'true'
 ```
 
 This configures Terraform for non-interactive execution in CI/CD environments, producing cleaner logs, suppressing interactive prompts, and generating more consistent output during automated deployments.
@@ -477,30 +526,41 @@ terraform validate
 
 These stages ensure that the Terraform configuration follows standard formatting conventions and that the configuration is syntactically valid before deployment begins.
 
-### Plan review and approval
+### Plan generation
 
-Terraform generates a deployment plan and displays it in the Jenkins build logs:
+Terraform generates an execution plan using the environment-specific variable file.
 
 ```bash
-terraform plan -out=tfplan
+terraform plan -var-file=${params.ENVIRONMENT}.tfvars -out=tfplan
 terraform show tfplan
 ```
 
-A **manual approval gate** was added before the apply stage:
+The generated plan is displayed in the Jenkins build logs and saved to a file so that the exact plan reviewed is the same plan that is later applied.
+
+### Manual approval with timeout
+
+Before applying any infrastructure changes, the pipeline requires manual approval.
 
 ```groovy
-input message: "Review the Terraform plan in the build logs. Apply these changes?"
+timeout(time: 1, unit: 'HOURS') {
+    input message: "Apply Terraform changes to ${params.ENVIRONMENT}?"
+}
 ```
 
-This allows the proposed infrastructure changes to be reviewed before deployment continues, providing an additional layer of control for shared or production environments.
+The `timeout` block prevents the pipeline from waiting indefinitely for user input, which could otherwise block Jenkins resources if the approval is never provided.
 
-After approval, the saved plan is applied using:
+This provides a controlled deployment process while ensuring that infrastructure changes cannot remain in a pending state indefinitely.
+
+### Terraform apply
+
+After approval is granted, the saved execution plan is applied.
 
 ```bash
 terraform apply -auto-approve tfplan
 ```
 
-Applying the saved plan ensures that Terraform deploys the exact infrastructure changes that were reviewed during the planning stage.
+Applying the saved plan ensures that Terraform deploys the **exact infrastructure changes that were reviewed during the planning stage**, providing a more predictable and controlled deployment process.
 
 </details>
+
 ---
