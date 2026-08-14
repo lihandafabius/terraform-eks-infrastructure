@@ -657,3 +657,9 @@ The Kubernetes and Helm providers were configured only after the EKS cluster had
 
 ---
 
+## Summary
+
+This project replaced the manual, eksctl/CloudFormation-based setup from the previous exercise with a fully declarative Terraform workflow for provisioning Amazon EKS. Networking, the cluster, and MySQL were split into independent modules, remote state was moved to a versioned, lockable S3 backend, and a parameterized Jenkins pipeline now handles initialization, validation, planning, and approval-gated deployment across dev, staging, and production from a single codebase.
+
+Along the way, the project reinforced a few core IaC and Kubernetes practices: using **Pod Identity** instead of static credentials for in-cluster AWS access, isolating state per environment to avoid cross-environment drift, and treating infrastructure changes with the same review-and-approve discipline as application code. The authentication and circular-dependency issues encountered during the build were also useful reminders that provider ordering and IAM trust boundaries need as much intentional design as the resources themselves.
+
