@@ -247,8 +247,6 @@ module "ebs_csi_pod_identity" {
 
 The IAM role created by this module is associated with the `ebs-csi-controller-sa` service account, allowing the EBS CSI controller to create, attach, detach, and manage Amazon EBS volumes without exposing long-lived AWS access keys inside the cluster.
 
-> **Note:** EKS Pod Identity is the recommended authentication method for EKS workloads because it provides temporary IAM credentials through Kubernetes service accounts and eliminates the need to manage AWS access keys inside containers.
-
 ![cluster creation](images/cluster_verify.png)
 
 
@@ -341,7 +339,7 @@ The deployment provides a **primary MySQL instance and two replicas**, with each
 
 Terraform state was configured to use **Amazon S3 as a remote backend** instead of storing the state file locally. A local state file exists only on one machine, making collaboration difficult and increasing the risk of state conflicts. Using a shared remote backend provides a single source of truth for the infrastructure and allows both developers and CI/CD pipelines to work with the same Terraform state.
 
-An **Amazon S3 bucket** was created specifically for Terraform state storage, with **versioning enabled** to maintain a history of state changes and allow previous versions of the state file to be recovered if necessary. Remember to disable public access of the S3 bucket.
+An **Amazon S3 bucket** was created specifically for Terraform state storage, with **versioning enabled** to maintain a history of state changes and allow previous versions of the state file to be recovered if necessary. Remember to disable public access on the S3 bucket.
 
 ```hcl
 terraform {
@@ -349,16 +347,22 @@ terraform {
 
   backend "s3" {
     bucket       = "<bucket name>"
-    key          = "java-app/state.tfstate"
     region       = "eu-north-1"
     use_lockfile = true
   }
 }
 ```
 
-The `bucket`, `key`, and `region` attributes configure Terraform to store the state file in Amazon S3 and retrieve it automatically whenever Terraform is executed.
+The backend configuration defines the S3 bucket and AWS region used for Terraform state storage. The backend **key is intentionally not hardcoded** because it is supplied dynamically by the Jenkins pipeline during `terraform init`.
 
-> **Note:** A separate state file should be maintained for each environment, such as **dev**, **test**, **staging**, and **production**. Isolating state files prevents infrastructure changes in one environment from affecting another and allows each environment to be managed independently.
+> **Note:** The backend key is selected dynamically by the Jenkins pipeline based on the target environment. During the initialization stage, the pipeline passes the backend key to Terraform using:
+>
+> ```groovy
+> terraform init -reconfigure \
+> -backend-config="key=${params.ENVIRONMENT}_java-app/state.tfstate"
+> ```
+>
+> This creates a separate state file for each environment, such as **dev**, **staging**, and **production**, while using the same Terraform codebase. The pipeline also selects the corresponding `*.tfvars` file for the target environment, allowing each environment to maintain its own configuration and infrastructure state independently.
 
 ### State locking
 
@@ -367,6 +371,7 @@ The backend was configured with `use_lockfile = true`, which enables **Terraform
 State locking prevents multiple users or CI/CD pipelines from modifying the same state file simultaneously. When a Terraform operation is running, a lock is created, and any other operation must wait until the lock is released.
 
 This protects the state file from concurrent modifications and ensures that infrastructure changes are applied consistently and safely across the team.
+
 
 ![S3 Bucket](images/s3.png)
 
