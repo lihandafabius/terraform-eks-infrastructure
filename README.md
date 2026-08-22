@@ -91,6 +91,8 @@ The root Terraform configuration orchestrates the entire infrastructure by invok
 
 The Terraform configuration was hosted in a **separate Git repository** from the Java application. This follows Infrastructure as Code and GitOps practices by keeping infrastructure changes independent from application changes. It allows the infrastructure team to version, review, and manage the AWS environment separately while also making it possible to reuse the same Terraform configuration for development, testing, staging, and production environments.
 
+Keeping the repositories separate also avoids **unnecessary CI pipeline runs** — a commit to the application source code no longer triggers the full Terraform pipeline (init, plan, apply) when no infrastructure has actually changed, and vice versa. It also keeps each pipeline's logic simple: mixing application build/deploy steps with Terraform provisioning steps in a single repository would require **conditional logic to detect which part of the codebase changed** and route the pipeline accordingly, adding complexity that a repository split avoids entirely.
+
 ### Terraform modules
 
 The infrastructure was divided into reusable **Terraform modules** rather than placing all resources in a single Terraform configuration. The project was organized into three main modules: **VPC**, **EKS**, and **MySQL**, making the infrastructure easier to maintain, reuse, and manage independently.
