@@ -26,7 +26,17 @@ The project provisions an Amazon EKS cluster with:
 * EKS Pod Identity for secure IAM authentication
 * MySQL deployed through Helm with persistent Amazon EBS volumes
 
-In addition to infrastructure provisioning, the project implements **remote Terraform state management** using **Amazon S3** and a **Jenkins CI/CD pipeline** that automatically validates, plans, and applies infrastructure changes from a Git repository. This follows a **push-based GitOps model**, where Jenkins pushes changes to AWS as soon as they're approved, rather than a cluster-side controller pulling and reconciling state — a deliberate choice explored on a later project.
+In addition to infrastructure provisioning, the project implements **remote Terraform state management** using **Amazon S3** and a **Jenkins CI/CD pipeline** that automatically validates, plans, and applies infrastructure changes from a Git repository. This follows a **push-based GitOps model**, where Jenkins pushes changes to AWS as soon as they're approved, rather than a cluster-side controller 
+pulling and reconciling state — a deliberate choice explored on a later project.
+
+---
+
+## Architecture
+
+
+![Architecture](images/Terraform_infra_architecture.png)
+
+---
 
 ## Project objectives
 
